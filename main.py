@@ -1,14 +1,30 @@
-# unzip_api.py
-from fastapi import FastAPI, File, UploadFile
-import zipfile, io
+from fastapi import FastAPI, Body
+from fastapi.responses import JSONResponse
+import base64
+import zipfile
+import io
+import xmltodict
 
 app = FastAPI()
 
 @app.post("/unzip-xml")
-async def unzip_and_return_xml(file: UploadFile = File(...)):
-    contents = await file.read()
-    with zipfile.ZipFile(io.BytesIO(contents)) as zf:
-        xml_name = [f for f in zf.namelist() if f.endswith(".xml")][0]
-        with zf.open(xml_name) as xml_file:
-            xml_content = xml_file.read().decode("utf-8")
-    return {"xml": xml_content}
+async def unzip_xml(
+    filename: str = Body(...),
+    content: str = Body(...)
+):
+    try:
+        zip_bytes = base64.b64decode(content)
+        zip_file = zipfile.ZipFile(io.BytesIO(zip_bytes))
+        extracted_data = []
+        for file in zip_file.namelist():
+            if file.endswith(".xml"):
+                xml_content = zip_file.read(file).decode("utf-8")
+                json_data = xmltodict.parse(xml_content)
+                extracted_data.append({
+                    "filename": file,
+                    "content": json_data
+                })
+
+        return {"status": "ok", "data": extracted_data}
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
