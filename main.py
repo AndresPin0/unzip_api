@@ -17,9 +17,9 @@ async def unzip_xml(
         zip_file = zipfile.ZipFile(io.BytesIO(zip_bytes))
         extracted_data = []
         for file in zip_file.namelist():
-            if file.endswith(".xml"):
-                xml_content = zip_file.read(file).decode("utf-8")
-                json_data = xmltodict.parse(xml_content)
+            if file.lower().endswith(".xml"):
+                raw_bytes = zip_file.read(file)
+                json_data = xmltodict.parse(raw_bytes)
                 extracted_data.append({
                     "filename": file,
                     "content": json_data
