@@ -1,4 +1,4 @@
-fastapi
-uvicorn
-python-multipart
-xmltodict
+fastapi>=0.111
+uvicorn[standard]>=0.29
+xmltodict>=0.13
+chardet>=5.2
