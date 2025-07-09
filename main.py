@@ -104,3 +104,59 @@ async def download_txt(filename: str):
 
     return FileResponse(filepath, media_type="text/plain", filename=filename)
 
+
+@app.get("/files")
+async def list_files():
+    try:
+        files = []
+        for filename in os.listdir(TEMP_DIR):
+            if filename.endswith('.txt'):
+                filepath = os.path.join(TEMP_DIR, filename)
+                if os.path.isfile(filepath):
+                    stat = os.stat(filepath)
+                    files.append({
+                        "filename": filename,
+                        "download_url": f"/download/{filename}",
+                        "created_at": datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                        "size_bytes": stat.st_size,
+                        "size_mb": round(stat.st_size / (1024 * 1024), 2)
+                    })
+        
+        files.sort(key=lambda x: x["created_at"], reverse=True)
+        
+        return {
+            "status": "ok",
+            "files": files,
+            "total_files": len(files)
+        }
+        
+    except Exception as e:
+        logging.error(f"Error listando archivos: {e}")
+        return JSONResponse(
+            status_code=500, 
+            content={"error": "Error al listar archivos"}
+        )
+
+@app.delete("/files/{filename}")
+async def delete_file(filename: str):
+    try:
+        filepath = os.path.join(TEMP_DIR, filename)
+        if not os.path.exists(filepath):
+            return JSONResponse(
+                status_code=404, 
+                content={"error": "Archivo no encontrado"}
+            )
+        
+        os.remove(filepath)
+        logging.info(f"Archivo eliminado: {filename}")
+        
+        return {"status": "ok", "message": f"Archivo {filename} eliminado"}
+        
+    except Exception as e:
+        logging.error(f"Error eliminando archivo {filename}: {e}")
+        return JSONResponse(
+            status_code=500, 
+            content={"error": "Error al eliminar archivo"}
+        ) 
+
+
