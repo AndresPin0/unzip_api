@@ -1,7 +1,7 @@
 import base64, zipfile, io, re, chardet, xmltodict, binascii, logging
 from fastapi import FastAPI, Body
 from fastapi.responses import JSONResponse, FileResponse
-import os
+import os, time
 from datetime import datetime
 
 TEMP_DIR = "temp_txt"
@@ -9,6 +9,14 @@ TEMP_DIR = "temp_txt"
 
 logging.basicConfig(level=logging.INFO)
 app = FastAPI()
+
+
+def cleanup_temp_txt(hours=24):
+    now = time.time()
+    for f in os.listdir("temp_txt"):
+        path = os.path.join("temp_txt", f)
+        if os.path.isfile(path) and now - os.path.getmtime(path) > hours * 3600:
+            os.remove(path)
 
 
 def detect_encoding(raw: bytes) -> str:
