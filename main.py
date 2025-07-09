@@ -1,14 +1,22 @@
 import base64, zipfile, io, re, chardet, xmltodict, binascii, logging
 from fastapi import FastAPI, Body
 from fastapi.responses import JSONResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 import os, time
 from datetime import datetime
 
 TEMP_DIR = "temp_txt"
 
-
 logging.basicConfig(level=logging.INFO)
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def cleanup_temp_txt(hours=24):
