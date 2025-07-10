@@ -114,7 +114,8 @@ async def save_txt(
     content: str = Body(...)
 ):
     try:
-        safe_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+        date_str     = datetime.now().strftime('%d-%m-%y')
+        safe_filename = f"{date_str}.txt"
         filepath = os.path.join(TEMP_DIR, safe_filename)
 
         with open(filepath, "w", encoding="utf-8") as f:
