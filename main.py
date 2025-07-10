@@ -36,14 +36,13 @@ def detect_encoding(raw: bytes) -> str:
     return chardet.detect(raw)["encoding"] or "utf-8"
 
 
-@app.post("/unzip-xml")
 async def unzip_xml(
     filename: str = Body(...),
     content: str = Body(...)
 ):
     try:
         zip_bytes = base64.b64decode(content)
-        z        = zipfile.ZipFile(io.BytesIO(zip_bytes))
+        z = zipfile.ZipFile(io.BytesIO(zip_bytes))
 
         logging.info(f"→ Recibido ZIP {filename}, {len(zip_bytes)} bytes")
         logging.info(f"   Contiene: {z.namelist()}")
@@ -54,7 +53,6 @@ async def unzip_xml(
                 continue
 
             raw = z.read(fname)
-
             logging.info(f"{fname}: primeros 16 bytes = {binascii.hexlify(raw[:16])}")
 
             enc = detect_encoding(raw)
@@ -62,8 +60,37 @@ async def unzip_xml(
 
             try:
                 xml_str = raw.decode(enc, errors="strict").lstrip("\ufeff")
-                data    = xmltodict.parse(xml_str)
-                extracted.append({"filename": fname, "content": data})
+                data = xmltodict.parse(xml_str)
+
+                if 'AttachedDocument' in data:
+                    logging.info(f"{fname}: Documento tipo AttachedDocument detectado")
+
+                    try:
+                        cdata_raw = data['AttachedDocument']['cac:Attachment']['cac:ExternalReference']['cbc:Description']
+
+                        cdata_clean = re.sub(r'^<!\[CDATA\[|\]\]>$', '', cdata_raw.strip())
+
+                        inner_data = xmltodict.parse(cdata_clean)
+
+                        extracted.append({
+                            "filename": fname,
+                            "content": inner_data
+                        })
+                        continue
+
+                    except Exception as inner_e:
+                        logging.warning(f"{fname}: error al procesar contenido embebido: {inner_e}")
+                        extracted.append({
+                            "filename": fname,
+                            "content": data
+                        })
+
+                else:
+                    extracted.append({
+                        "filename": fname,
+                        "content": data
+                    })
+
             except Exception as e:
                 logging.error(f"{fname}: error al parsear → {e}")
                 continue
