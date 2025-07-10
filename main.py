@@ -35,7 +35,7 @@ def detect_encoding(raw: bytes) -> str:
         return m.group(1).lower()
     return chardet.detect(raw)["encoding"] or "utf-8"
 
-
+@app.post("/unzip-xml")
 async def unzip_xml(
     filename: str = Body(...),
     content: str = Body(...)
