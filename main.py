@@ -54,19 +54,9 @@ async def unzip_xml(
 
             raw = z.read(fname)
             enc = detect_encoding(raw)
-
-            try:
-                xml_str = raw.decode(enc, errors="strict")
-            except (LookupError, UnicodeDecodeError) as e:
-                logging.warning(f"{fname}: fallo al decodificar con '{enc}': {e}; uso utf-8 con replace")
-                xml_str = raw.decode("utf-8", errors="replace")
-
-            xml_str = xml_str.lstrip("\ufeff").lstrip()
-            first_lt = xml_str.find('<')
-            if first_lt > 0:
-                xml_str = xml_str[first_lt:]
-
+            xml_str = raw.decode(enc, errors="strict").lstrip("\ufeff")
             data = xmltodict.parse(xml_str)
+
             root = next(iter(data))
 
             if root == 'AttachedDocument':
