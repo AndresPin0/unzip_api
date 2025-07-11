@@ -53,43 +53,59 @@ async def unzip_xml(
                 continue
 
             raw = z.read(fname)
+            logging.info(f"{fname}: primeros 16 bytes = {binascii.hexlify(raw[:16])}")
+
             enc = detect_encoding(raw)
-            xml_str = raw.decode(enc, errors="strict").lstrip("\ufeff")
-            data = xmltodict.parse(xml_str)
+            logging.info(f"{fname}: encoding detectado = {enc}")
 
-            root = next(iter(data))
+            try:
+                xml_str = raw.decode(enc, errors="strict").lstrip("\ufeff")
+                data = xmltodict.parse(xml_str)
 
-            if root == 'AttachedDocument':
-                logging.info(f"{fname}: contenedor AttachedDocument detectado")
-                try:
-                    cdata_raw = data['AttachedDocument']['cac:Attachment']['cac:ExternalReference']['cbc:Description']
-                    cdata_clean = re.sub(r'^<!\[CDATA\[|\]\]>$', '', cdata_raw.strip())
-                    inner = xmltodict.parse(cdata_clean)
+                if 'AttachedDocument' in data:
+                    logging.info(f"{fname}: Documento tipo AttachedDocument detectado")
+
+                    try:
+                        cdata_raw = data['AttachedDocument']['cac:Attachment']['cac:ExternalReference']['cbc:Description']
+
+                        cdata_clean = re.sub(r'^<!\[CDATA\[|\]\]>$', '', cdata_raw.strip())
+
+                        inner_data = xmltodict.parse(cdata_clean)
+
+                        extracted.append({
+                            "filename": fname,
+                            "content": inner_data
+                        })
+                        continue
+
+                    except Exception as inner_e:
+                        logging.warning(f"{fname}: error al procesar contenido embebido: {inner_e}")
+                        extracted.append({
+                            "filename": fname,
+                            "content": data
+                        })
+
+                else:
                     extracted.append({
                         "filename": fname,
-                        "content": inner
+                        "content": data
                     })
-                    continue
-                except Exception as e:
-                    logging.warning(f"{fname}: fallo extrayendo Invoice embebido → {e}")
 
-            extracted.append({
-                "filename": fname,
-                "content": data
-            })
+            except Exception as e:
+                logging.error(f"{fname}: error al parsear → {e}")
+                continue
 
         if not extracted:
             return JSONResponse(
                 status_code=400,
-                content={"error": "No se pudo parsear ningún XML. Verifica los logs."},
+                content={"error": "No se pudo parsear ningún XML. Revisa los logs."},
             )
 
         return {"status": "ok", "data": extracted}
 
     except Exception as e:
-        logging.error(f"Error general unzip-xml: {e}")
         return JSONResponse(status_code=400, content={"error": str(e)})
-        
+
 os.makedirs(TEMP_DIR, exist_ok=True)
 
 @app.post("/save-txt")
