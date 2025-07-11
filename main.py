@@ -49,42 +49,44 @@ async def unzip_xml(
 
         extracted = []
         for fname in z.namelist():
-            if not fname.lower().endswith(".xml"):
-                continue
-    
-            raw = z.read(fname)
-            enc = detect_encoding(raw)
-    
-            try:
-                xml_str = raw.decode(enc, errors="strict")
-            except (LookupError, UnicodeDecodeError) as e:
-                logging.warning(f"{fname}: fallo al decodificar con '{enc}': {e}; uso utf-8 con replace")
-                xml_str = raw.decode("utf-8", errors="replace")
-    
-            xml_str = xml_str.lstrip("\ufeff").lstrip()
-            first_lt = xml_str.find('<')
-            if first_lt > 0:
-                xml_str = xml_str[first_lt:]
-            data = xmltodict.parse(xml_str)
+    if not fname.lower().endswith(".xml"):
+        continue
 
-            if root == 'AttachedDocument':
-                logging.info(f"{fname}: contenedor AttachedDocument detectado")
-                try:
-                    cdata_raw = data['AttachedDocument']['cac:Attachment']['cac:ExternalReference']['cbc:Description']
-                    cdata_clean = re.sub(r'^<!\[CDATA\[|\]\]>$', '', cdata_raw.strip())
-                    inner = xmltodict.parse(cdata_clean)
-                    extracted.append({
-                        "filename": fname,
-                        "content": inner
-                    })
-                    continue
-                except Exception as e:
-                    logging.warning(f"{fname}: fallo extrayendo Invoice embebido → {e}")
+    raw = z.read(fname)
+    enc = detect_encoding(raw)
 
+    try:
+        xml_str = raw.decode(enc, errors="strict")
+    except (LookupError, UnicodeDecodeError) as e:
+        logging.warning(f"{fname}: fallo al decodificar con '{enc}': {e}; uso utf-8 con replace")
+        xml_str = raw.decode("utf-8", errors="replace")
+
+    xml_str = xml_str.lstrip("\ufeff").lstrip()
+    first_lt = xml_str.find('<')
+    if first_lt > 0:
+        xml_str = xml_str[first_lt:]
+
+    data = xmltodict.parse(xml_str)
+    root = next(iter(data))
+
+    if root == 'AttachedDocument':
+        logging.info(f"{fname}: contenedor AttachedDocument detectado")
+        try:
+            cdata_raw = data['AttachedDocument']['cac:Attachment']['cac:ExternalReference']['cbc:Description']
+            cdata_clean = re.sub(r'^<!\[CDATA\[|\]\]>$', '', cdata_raw.strip())
+            inner = xmltodict.parse(cdata_clean)
             extracted.append({
                 "filename": fname,
-                "content": data
+                "content": inner
             })
+            continue
+        except Exception as e:
+            logging.warning(f"{fname}: fallo extrayendo Invoice embebido → {e}")
+
+    extracted.append({
+        "filename": fname,
+        "content": data
+    })
 
         if not extracted:
             return JSONResponse(
