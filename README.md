@@ -1,21 +1,21 @@
 # Unzip API - Procesador de Archivos XML
 
-## 📋 Descripción
+## Descripción
 
 API REST desarrollada con FastAPI para el procesamiento automatizado de archivos ZIP que contienen documentos XML, especialmente diseñada para el manejo de documentos de facturación electrónica y documentos fiscales. La API extrae, parsea y convierte archivos XML a formato JSON para su fácil integración con sistemas web.
 
-## 🚀 Características Principales
+## Características Principales
 
-- ✅ **Procesamiento de ZIP**: Extrae automáticamente archivos XML de archivos ZIP codificados en base64
-- ✅ **Detección Inteligente de Encoding**: Reconoce automáticamente la codificación de caracteres de los archivos XML
-- ✅ **Manejo de CDATA**: Procesa contenido XML embebido en secciones CDATA
-- ✅ **Documentos AttachedDocument**: Soporte especializado para documentos de facturación electrónica
-- ✅ **Gestión de Archivos**: Sistema completo de guardado, descarga y eliminación de archivos TXT
-- ✅ **API RESTful**: Endpoints bien estructurados con documentación automática
-- ✅ **CORS Habilitado**: Acceso desde cualquier origen para integración frontend
-- ✅ **Logging Detallado**: Registro completo de operaciones para debugging y monitoreo
+-  **Procesamiento de ZIP**: Extrae automáticamente archivos XML de archivos ZIP codificados en base64
+-  **Detección Inteligente de Encoding**: Reconoce automáticamente la codificación de caracteres de los archivos XML
+-  **Manejo de CDATA**: Procesa contenido XML embebido en secciones CDATA
+-  **Documentos AttachedDocument**: Soporte especializado para documentos de facturación electrónica
+-  **Gestión de Archivos**: Sistema completo de guardado, descarga y eliminación de archivos TXT
+-  **API RESTful**: Endpoints bien estructurados con documentación automática
+-  **CORS Habilitado**: Acceso desde cualquier origen para integración frontend
+-  **Logging Detallado**: Registro completo de operaciones para debugging y monitoreo
 
-## 🛠️ Tecnologías Utilizadas
+##  Tecnologías Utilizadas
 
 - **FastAPI** - Framework web moderno para Python
 - **Uvicorn** - Servidor ASGI de alto rendimiento
@@ -23,7 +23,7 @@ API REST desarrollada con FastAPI para el procesamiento automatizado de archivos
 - **chardet** - Detección automática de codificación de caracteres
 - **python-multipart** - Manejo de formularios y body requests
 
-## 📦 Instalación
+##  Instalación
 
 ### Prerrequisitos
 
@@ -67,7 +67,7 @@ API REST desarrollada con FastAPI para el procesamiento automatizado de archivos
    - Documentación automática: `http://localhost:8000/docs`
    - Documentación alternativa: `http://localhost:8000/redoc`
 
-## 🌐 Despliegue en Producción
+##  Despliegue en Producción
 
 ### Despliegue en Render.com (Recomendado)
 
@@ -121,7 +121,7 @@ HOST=0.0.0.0
 LOG_LEVEL=INFO
 ```
 
-## 📚 Documentación de la API
+##  Documentación de la API
 
 ### Endpoints Principales
 
@@ -197,7 +197,7 @@ unzip_api/
 - **Directorio temporal**: `temp_txt/` para archivos generados
 - **Logging**: Nivel INFO por defecto
 
-## 🧪 Casos de Uso
+##  Casos de Uso
 
 ### 1. Procesamiento de Facturas Electrónicas
 ```python
@@ -236,7 +236,7 @@ const processZip = async (file) => {
 };
 ```
 
-## 🔍 Troubleshooting
+##  Troubleshooting
 
 ### Problemas Comunes
 
@@ -275,27 +275,9 @@ INFO: factura.xml: encoding detectado = utf-8
 INFO: factura.xml: Documento tipo AttachedDocument detectado
 ```
 
-## 🚨 Consideraciones de Seguridad
+##  Consideraciones de Seguridad
 
 - **Validación de archivos**: Solo procesa archivos XML dentro de ZIPs
 - **Límites de tamaño**: Límite ajustado a la capacidad del servidor
 - **Autenticación**: No implementada
 - **Limpieza de archivos**: Función disponible para limpiar archivos temporales
-
-## 📞 Soporte
-
-Para soporte técnico o preguntas sobre la implementación:
-
-1. Revisar logs de la aplicación
-2. Verificar configuración de despliegue
-3. Contactar al equipo de desarrollo
-
-## 📄 Licencia
-
-Este proyecto es un entregable personalizado desarrollado específicamente para las necesidades del cliente.
-
----
-
-**Versión**: 1.0.0  
-**Última actualización**: Agosto 2025 
-**Compatibilidad**: Python 3.8+
