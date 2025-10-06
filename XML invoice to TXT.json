@@ -1,0 +1,496 @@
+{
+  "name": "XML invoice to TXT",
+  "nodes": [
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "https://unzip-api.onrender.com/unzip-xml",
+        "allowUnauthorizedCerts": true,
+        "options": {},
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "filename",
+              "value": "={{ $('Webhook').item.json.body.filename }}"
+            },
+            {
+              "name": "content",
+              "value": "={{ $('Webhook').item.json.body.content}}"
+            }
+          ]
+        }
+      },
+      "name": "Enviar ZIP al Webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [
+        -784,
+        -64
+      ],
+      "id": "937fda89-e99b-49b3-8df9-1aa8192dd385"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -64
+      ],
+      "id": "86f5d895-0045-4c41-864c-fbfbdcac3c03",
+      "name": "Split Out Items"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "644f711a-11f1-4e02-9ab6-4db55bb14cf6",
+              "name": "Número de Factura",
+              "value": "={{ $json.content.Invoice['cbc:ID'] }}",
+              "type": "string"
+            },
+            {
+              "id": "17f7dcc5-b8ca-41db-89c3-6df9868780d6",
+              "name": "Fecha de Emisión",
+              "value": "={{ $json.content.Invoice['cbc:IssueDate'] }}",
+              "type": "string"
+            },
+            {
+              "id": "76072445-63ee-4d42-9739-783b379872bd",
+              "name": "Tipo de factura",
+              "value": "={{ $json.content.Invoice['cbc:InvoiceTypeCode']?.['#text'] ?? $json.content.Invoice['cbc:InvoiceTypeCode'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "2659c417-9a92-4729-a487-2e1f40b13851",
+              "name": "=Moneda",
+              "value": "={{ $json.content.Invoice['cbc:DocumentCurrencyCode'] }}",
+              "type": "string"
+            },
+            {
+              "id": "10dab5cf-663f-4a76-926d-eff25a51f2d1",
+              "name": "Total a pagar",
+              "value": "={{ Number($json.content.Invoice['cac:LegalMonetaryTotal']?.['cbc:PayableAmount']?.['#text'] ?? 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "50594b2d-2842-4f78-bef8-2888be168b3f",
+              "name": "IVA",
+              "value": "={{ (()=>{\n  const inv = $json.content.Invoice;\n  const num = v => Number(v ?? 0);\n  const tt = inv?.['cac:TaxTotal'];\n  if (Array.isArray(tt)) return tt.reduce((s,t)=> s + num(t?.['cbc:TaxAmount']?.['#text']), 0);\n  return num(tt?.['cbc:TaxAmount']?.['#text']);\n})() }}",
+              "type": "number"
+            },
+            {
+              "id": "0786bc5f-b5f7-4b06-99bc-6429f8d0e497",
+              "name": "NIT Emisor",
+              "value": "={{ $json.content.Invoice['cac:AccountingSupplierParty']['cac:Party']['cac:PartyTaxScheme']['cbc:CompanyID']['#text'] }}",
+              "type": "string"
+            },
+            {
+              "id": "ec4bd162-cf12-47ea-89cd-2582d83a5025",
+              "name": "Razón Social Emisor",
+              "value": "={{ $json.content.Invoice['cac:AccountingSupplierParty']['cac:Party']['cac:PartyName']['cbc:Name'] }}",
+              "type": "string"
+            },
+            {
+              "id": "937144b5-cdbb-4436-9dbc-dc9efe9f8649",
+              "name": "NIT Receptor",
+              "value": "={{ $json.content.Invoice['cac:AccountingCustomerParty']['cac:Party']['cac:PartyTaxScheme']['cbc:CompanyID']['#text'] }}",
+              "type": "string"
+            },
+            {
+              "id": "9f64e9d0-00a1-4feb-9485-1bf6bf95e047",
+              "name": "Razón Social Receptor",
+              "value": "={{ \n  $json.content.Invoice['cac:AccountingCustomerParty']?.['cac:Party']?.['cac:PartyName']?.['cbc:Name'] \n  ?? $json.content.Invoice['cac:AccountingCustomerParty']?.['cac:Party']?.['cac:PartyLegalEntity']?.['cbc:RegistrationName'] \n  ?? $json.content.Invoice['cac:AccountingCustomerParty']?.['cac:Party']?.['cbc:Name'] \n  ?? ''\n}}",
+              "type": "string"
+            },
+            {
+              "id": "335ac0ce-7126-4ada-a8a6-a2967d77c0b0",
+              "name": "Descripción Línea 1",
+              "value": "={{ Array.isArray($json.content.Invoice['cac:InvoiceLine'])\n    ? $json.content.Invoice['cac:InvoiceLine']\n        .map(l => l?.['cac:Item']?.['cbc:Description'])\n        .filter(Boolean)\n        .join(' | ')\n    : $json.content.Invoice['cac:InvoiceLine']?.['cac:Item']?.['cbc:Description'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "61add581-0bff-4aa5-a170-6a73dcad9780",
+              "name": "Valor Línea 1",
+              "value": "={{ (()=>{\n  const inv = $json.content.Invoice;\n  const lines = inv?.['cac:InvoiceLine'];\n  const num = v => Number(v ?? 0);\n  if (Array.isArray(lines)) return lines.reduce((s,l)=> s + num(l?.['cbc:LineExtensionAmount']?.['#text']), 0);\n  const single = num(inv?.['cac:InvoiceLine']?.['cbc:LineExtensionAmount']?.['#text']);\n  return single>0 ? single : num(inv?.['cac:LegalMonetaryTotal']?.['cbc:TaxExclusiveAmount']?.['#text']);\n})() }}",
+              "type": "number"
+            },
+            {
+              "id": "2033fd1f-e04e-404b-be08-ff33f035a21c",
+              "name": "Fecha de Vencimiento",
+              "value": "={{ $json.content.Invoice['cbc:DueDate'] ?? $json.content.Invoice['cac:PaymentMeans']?.['cbc:PaymentDueDate'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "95bd2680-5a0f-4abe-9826-d7288a80f2eb",
+              "name": "Neto (Sin IVA)",
+              "value": "={{ Number($json.content.Invoice['cac:LegalMonetaryTotal']?.['cbc:TaxExclusiveAmount']?.['#text'] ?? 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "1efe60fa-da07-43ef-98b0-dfb7238b63cd",
+              "name": "Total con Impuestos Incluidos",
+              "value": "={{ Number($json.content.Invoice['cac:LegalMonetaryTotal']?.['cbc:TaxInclusiveAmount']?.['#text'] ?? 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "e8928465-f345-49ec-9a7d-d32f582a2a05",
+              "name": "Fecha Vencimiento de Pago",
+              "value": "={{ $json.content.Invoice['cac:PaymentMeans']['cbc:PaymentDueDate'] }}",
+              "type": "string"
+            },
+            {
+              "id": "52865122-819c-4fa7-8367-4096f5c56f30",
+              "name": "Teléfono Emisor",
+              "value": "={{ $json.content.Invoice['cac:AccountingSupplierParty']['cac:Party']['cac:Contact']['cbc:Telephone'] }}",
+              "type": "string"
+            },
+            {
+              "id": "c4f44456-9eb1-4976-88c1-0f15e45b458b",
+              "name": "Email Emisor",
+              "value": "={{ $json.content.Invoice['cac:AccountingSupplierParty']['cac:Party']['cac:Contact']['cbc:ElectronicMail'] }}",
+              "type": "string"
+            },
+            {
+              "id": "e7b9745f-837a-4eb4-8207-c91e50607ae6",
+              "name": "Retención 1",
+              "value": "={{ Number($json.content.Invoice['cac:WithholdingTaxTotal']?.[0]?.['cbc:TaxAmount']?.['#text'] ?? 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "29600950-42a3-453e-83e1-10959dc865e7",
+              "name": "Retención 2",
+              "value": "={{ Number($json.content.Invoice['cac:WithholdingTaxTotal']?.[1]?.['cbc:TaxAmount']?.['#text'] ?? 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "977d297f-f6a1-4e38-b3e1-ff4b5225eb3d",
+              "name": "Tipo de codigo",
+              "value": "={{ $json.content.Invoice['cbc:InvoiceTypeCode']?.['#text'] ?? $json.content.Invoice['cbc:InvoiceTypeCode'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "29458070-8130-4866-be98-e9ff036b75e3",
+              "name": "Ciudad ",
+              "value": "={{ $json.content.Invoice['cac:AccountingCustomerParty']['cac:Party']['cac:PhysicalLocation']['cac:Address']['cbc:CityName']\n    ?.toString()\n    .trim()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .toLowerCase()\n}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -336,
+        -64
+      ],
+      "id": "23c306c5-eb9a-45fb-9ecc-f3f42efa4481",
+      "name": "Campos Seleccionados"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://unzip-api.onrender.com/save-txt",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "=filename",
+              "value": "={{ $json['filename'] }}"
+            },
+            {
+              "name": "content",
+              "value": "={{ $json['content'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        144,
+        -64
+      ],
+      "id": "f90b02ee-0ee0-4180-9715-c9ff49672758",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dian-xml-process",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "https://zip-to-txt-wizard.lovable.app",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://zip-to-txt-wizard.lovable.app"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1456,
+        -64
+      ],
+      "id": "9c695f6c-20a4-40c8-a4f1-8a74f33281eb",
+      "name": "Webhook",
+      "webhookId": "a8a92c48-dd09-408f-99e3-42e58c982087"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"ok\",\n  \"message\": \"Invoice processed successfully\",\n  \"download_url\": \"https://unzip-api.onrender.com{{$json.download_url}}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        384,
+        -64
+      ],
+      "id": "d683de20-e444-4faa-b141-e9fad1c1db1d",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "69f984a9-2a71-4237-990b-7e5c48db5a27",
+              "name": "body.filename",
+              "value": "={{ $json.body.filename }}",
+              "type": "string"
+            },
+            {
+              "id": "842087ec-029f-44a5-b609-02739077a86f",
+              "name": "content",
+              "value": "={{ $json.body.content}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -976,
+        -64
+      ],
+      "id": "ab8f3e65-2146-4fd5-840d-7a188d65e29b",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dd549a3f-6a71-4441-8e40-924156f8d8d4",
+              "leftValue": "={{ $json['headers']['request-method'] || $json['headers']['http-method']}}",
+              "rightValue": "OPTIONS",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1216,
+        -64
+      ],
+      "id": "3d0955a2-4c53-4c51-95d4-b112281d5d62",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 204,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://zip-to-txt-wizard.lovable.app"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -976,
+        -256
+      ],
+      "id": "708c51a8-0856-472b-bb44-f26a2f2138f0",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// @ts-nocheck\n// Agregador multi-factura: genera un único FPBATCH.txt\n// - Entrada: N items (cada uno = 1 factura) desde \"Campos Seleccionados\"\n// - Salida: 1 item con { filename, content } concatenando 01/02/03 por factura\n// - FPBATCH-NRO-REG se asigna por factura: 00000001, 00000002, ...\n\n// ====== Helpers (Formato) ======\nfunction fmt(value, len, type) {\n  let s = String(value ?? '');\n  if (type === 'NUM') s = s.padStart(len, '0');\n  else if (type === 'ALFA') s = s.padEnd(len, ' ');\n  else if (type === 'MON') {\n    const num = Number(value) || 0;\n    const sign = num < 0 ? '-' : '+';\n    const parts = Math.abs(num).toFixed(2).split('.');\n    s = parts[0].padStart(len - 3, '0') + parts[1].padEnd(2, '0') + sign;\n  }\n  return s.slice(0, len);\n}\n\nfunction yyyymmdd(fecha) {\n  return String(fecha ?? '').replace(/-/g, '').padStart(8, '0').slice(0, 8);\n}\n\nfunction fmt_q(value) {\n  const num = Number(value) || 0;\n  const abs = Math.abs(num).toFixed(3).split('.');\n  const sign = num < 0 ? '-' : '+';\n  return abs[0].padStart(9, '0') + abs[1].padEnd(3, '0') + sign;\n}\n\nfunction fmt_m(value) {\n  const num = Number(value) || 0;\n  const abs = Math.abs(num).toFixed(2).split('.');\n  const sign = num < 0 ? '-' : '+';\n  return abs[0].padStart(15, '0') + abs[1].padEnd(2, '0') + sign;\n}\n// ====== Helpers (Negocio) ======\n\nfunction norm(s) {\n  return (s ?? '')\n    .toString()\n    .normalize('NFD')\n    .replace(/\\p{Diacritic}/gu, '')\n    .trim()\n    .toLowerCase();\n}\n\nfunction upper(s){ return norm(s).toUpperCase(); }\n\nfunction digits(s){ return (s ?? '').replace(/\\D+/g, ''); }\n\nfunction normalizeCityForMap(cityRaw){\n  let c = (cityRaw ?? '')\n    .toString()\n    .normalize('NFD').replace(/\\p{Diacritic}/gu,'') // quita tildes\n    .trim()\n    .replace(/\\s+/g,' ')           // colapsa espacios\n    .replace(/[–—]/g, '-')         // guiones raros → '-'\n    .replace(/\\s*-\\s*/g, '-');     // sin espacios alrededor del guion\n\n  const low = c.toLowerCase();\n\n  // claves estándar de tu matriz\n  if (low === 'cali') return 'CALI';\n  if (low === 'bogota' || low === 'bogotá') return 'BOGOTA';\n  if (low === 'pereira') return 'PEREIRA';\n  if (low === 'barranquilla') return 'BARRANQUILLA';\n  if (low === 'tulua' || low === 'tuluá') return 'TULUA';\n  if (low === 'buga') return 'BUGA';\n\n  // aliases de AR\n  if (low === 'cali local 107' || low === 'local 107 cali' || low === 'cali- local 107' || low === 'cali - local 107') {\n    return 'CALI-LOCAL 107';\n  }\n  if (low === 'cali calima' || low === 'calima cali') {\n    return 'CALI CALIMA';\n  }\n\n  return c.toUpperCase(); // por defecto\n}\n\nfunction cityFromSelected(inv){\n  // Soporta \"Ciudad \" (con espacio), \"Ciudad\", y variantes obvias\n  const ks = ['Ciudad ', 'Ciudad', 'Ciudad Receptor', 'Ciudad (Receptor)', 'Ciudad Detectada'];\n  for (const k of ks){\n    const v = inv[k];\n    if (v && String(v).trim().length) return normalizeCityForMap(v);\n  }\n  // fallback: cualquier clave que empiece por 'ciudad'\n  for (const k of Object.keys(inv)){\n    const nk = k.toString().trim().toLowerCase();\n    if (nk.startsWith('ciudad')){\n      const v = inv[k];\n      if (v && String(v).trim().length) return normalizeCityForMap(v);\n    }\n  }\n  return '';\n}\n\n// 1) Reglas de servicio (desc → código 001–007)\nconst SERVICE_RULES = [\n  { rx: /\\b(arriendo|canon)\\b/i,                                     code: '001', concept: 'ARRENDAMIENTOS' },\n  { rx: /\\brevisor(i?a)?\\s*fiscal\\b|\\brf\\b/i,                        code: '003', concept: 'HONORARIOS REVISORIA FISCAL' },\n  { rx: /honorari/i,                                                 code: '004', concept: 'HONORARIOS GESTION CONTABLE' },\n  { rx: /\\bgestion\\s+contable\\b|\\bcontable\\b/i,                      code: '004', concept: 'HONORARIOS GESTION CONTABLE' },\n  { rx: /\\bcafe\\b|\\balimento(s)?\\b|\\bazucar\\b|\\bgranos\\b/i,          code: '005', concept: 'COMPRA ALIMENTOS' },\n  { rx: /reparaci|mantenim|locativ|electric|reflector|bombill/i,     code: '006', concept: 'REPARACIONES LOCATIVAS' },\n  { rx: /\\brefresco(s)?\\b|\\bbebida(s)?\\b|\\bgaseosa(s)?\\b|\\bagua\\b|\\bjugo(s)?\\b/i, code: '007', concept: 'RESFRESCOS Y BEBIDAS' },\n];\n\n\nfunction detectService(inv){\n  const t = norm(inv['Descripción Línea 1'] ?? '');\n  for (const r of SERVICE_RULES){\n    if (r.rx.test(t)){\n      if (r.code === '004' && /revisori/.test(t)) {\n        return { code: '003', concept: 'HONORARIOS REVISORIA FISCAL' };\n      }\n      return { code: r.code, concept: r.concept };\n    }\n  }\n  console.warn(`Servicio NO clasificado para \"${inv['Descripción Línea 1']}\". Usando 001 por defecto.`);\n  return { code: '001', concept: 'ARRENDAMIENTOS' };\n}\n\n// 2) Empresa (sigla) por NIT/razón social\nconst NIT_TO_EMP = {\n  '805007280': 'AH', // ALADDIN HOTELES & CASINO SAS\n};\n\nconst NAME_TO_EMP = [\n  { rx: /aladdin(?:\\s+hotel(?:es)?)?\\s*&?\\s*casino/i, emp: 'AH' },\n  { rx: /american\\s+restaurant/i, emp: 'AR' },\n  { rx: /\\bmymawi\\b/i, emp: 'MM' },\n  { rx: /vivo\\s+aladdin\\s+online/i, emp: 'MW' },\n  { rx: /\\balfabet\\b/i, emp: 'AB' },\n  { rx: /\\bsigma\\b/i, emp: 'SG' },\n  { rx: /fox\\s+technologies/i, emp: 'FG' },\n  { rx: /\\bcc\\s+estudios\\b/i, emp: 'CC' },\n  { rx: /\\bdaigabiz\\b/i, emp: 'DZ' },\n];\n\nfunction detectEmpresa(inv){\n  const byNit = NIT_TO_EMP[digits(inv['NIT Receptor'])];\n  if (byNit) return byNit;\n  const name = inv['Razón Social Receptor'] ?? '';\n  for (const f of NAME_TO_EMP){\n    if (f.rx.test(name)) return f.emp;\n  }\n    // Si da igual a nada, conserva la lógica de iniciales como último recurso:\n  const stop = ['&','S.A.S.','SAS','LTDA','S.','A.','Ltda','Ltda.','Y'];\n  const palabras = String(name).replace(/[.,]/g,'').split(' ')\n    .filter(p => !!p && !stop.includes(p.toUpperCase()));\n  return ((palabras[0]?.[0] || '') + (palabras[1]?.[0] || '')).toUpperCase().padEnd(2,'X');\n}\n\n// 3) Ciudad desde el XML \nfunction getCiudad(inv){\n  const direct = inv['Ciudad'] || inv['Ciudad Receptor'] || inv['Ciudad (Receptor)'] || inv['Ciudad Detectada'];\n  if (direct && String(direct).trim().length) return upper(direct);\n  try {\n    const city = inv?.content?.Invoice?.['cac:AccountingCustomerParty']?.['cac:Party']?.['cac:PhysicalLocation']?.['cac:Address']?.['cbc:CityName'];\n    if (city && String(city).trim().length) return upper(city);\n  } catch {}\n  return '';\n}\n\n// 4) Matriz EMPRESA+CIUDAD → CO\nconst EMP_CITY_TO_CO = {\n  AH: { 'CALI':'001', 'PEREIRA':'017', 'BOGOTA':'048' },\n  AR: { 'BOGOTA':'001', 'CALI CALIMA':'105', 'CALI-LOCAL 107':'109' },\n  MM: { 'CALI':'001' },\n  MW: { 'CALI':'001' },\n  AB: { 'CALI':'001' },\n  SG: { 'CALI':'001' },\n  FG: { 'CALI':'050', 'BARRANQUILLA':'043', 'TULUA':'038', 'PEREIRA':'039', 'BUGA':'130' },\n  CC: { 'CALI':'001' },\n  DZ: { 'CALI':'001', 'PEREIRA':'115' },\n};\n\nfunction detectCO(sigla, ciudad){\n  if (!sigla || !ciudad) return '';\n  return EMP_CITY_TO_CO[sigla]?.[ciudad] ?? '';\n}\n\n// ====== Builders por registro ======\n\n// Nota: NO calculan el consecutivo; lo reciben en nroReg ya con padStart(8)\nfunction buildReg01(inv, nroReg) {\n  const EMPRESA = detectEmpresa(inv);        // sigla (AH, AR, …) o fallback iniciales\n  const CIUDAD  = cityFromSelected(inv);\n  const CO      = detectCO(EMPRESA, CIUDAD) || String(inv['CO'] || '001').slice(0,3);\n\n  const tipoDocto = 'PA'; // fijo\n  const fullDocId = String(inv['Número de Factura'] || '');\n  const prefProv  = String(inv['Prefijo Proveedor'] || fullDocId.replace(/[0-9]/g, '')).slice(0, 4).padEnd(4, ' ');\n  const nroProv   = String(fullDocId.replace(/[A-Za-z]/g, '')).padEnd(12, ' ');\n  const nroDoctoNum = (fullDocId.replace(/[A-Za-z]/g, '') || '').padStart(6, '0');\n  const sucTer    = String(inv['SucursalEmisor'] ?? '00').slice(0, 2);\n  const detalle   = inv['FPBATCH-DETALLE'] ?? inv['Descripción Línea 1'] ?? '';\n  const cuentaCXP = String(inv['FPBATCH-CUENTA-CXP'] ?? '').padEnd(8, ' ');\n\n  let rec01 = '';\n  rec01 += nroReg;                         // NRO-REG (ya padded)\n  rec01 += fmt('01', 2, 'NUM');            // TIPO-REG\n  rec01 += fmt(EMPRESA, 2, 'ALFA');        // EMPRESA (sigla)\n  rec01 += fmt(CO, 3, 'ALFA');             // CO (por ciudad)\n  rec01 += fmt(tipoDocto, 2, 'ALFA');      // TIPO-DOCTO (PA)\n  rec01 += fmt(nroDoctoNum, 6, 'NUM');     // NRO-DOCTO\n  rec01 += fmt(inv['NIT Emisor'], 13, 'ALFA'); // COD-TER\n  rec01 += fmt(sucTer, 2, 'ALFA');         // SUC-TER\n  rec01 += yyyymmdd(inv['Fecha de Emisión']); // FECHA-DOC\n  rec01 += fmt(prefProv, 4, 'ALFA');       // PREFIJO-PROV\n  rec01 += fmt(nroProv, 12, 'ALFA');       // NRO-PROV\n  rec01 += yyyymmdd(inv['Fecha de Emisión']); // FECHA-DOC-PROV\n  rec01 += fmt('1', 1, 'ALFA');            // ESTADO\n  rec01 += fmt('C', 1, 'ALFA');            // NAT-CXP\n  rec01 += fmt(detalle, 60, 'ALFA');       // DETALLE\n  rec01 += fmt('', 2, 'ALFA');             // MONEDA nacional\n  rec01 += fmt(1, 12, 'MON');              // TASA-CONVER\n  rec01 += fmt(1, 12, 'MON');              // TASA-CAMBIO\n  rec01 += fmt('', 8, 'ALFA');             // DCTO-ALT\n  rec01 += fmt(cuentaCXP, 8, 'ALFA');      // CUENTA-CXP\n  rec01 = rec01.padEnd(512, ' ');\n  return rec01.slice(0, 512);\n}\n\nfunction buildReg02(inv, nroReg) {\n  const EMPRESA = detectEmpresa(inv);\n  const CIUDAD  = cityFromSelected(inv);\n  const CO      = detectCO(EMPRESA, CIUDAD) || String(inv['CO'] || '001').slice(0,3);\n\n  const tipoDocto = 'PA';\n  const fullDocId = String(inv['Número de Factura'] || '');\n  const nroDoctoNum = (fullDocId.replace(/[A-Za-z]/g, '') || '').padStart(6, '0');\n\n  let rec02 = '';\n  rec02 += nroReg;                      // NRO-REG\n  rec02 += fmt('02', 2, 'NUM');         // TIPO-REG\n  rec02 += fmt(EMPRESA, 2, 'ALFA');     // EMPRESA (sigla)\n  rec02 += fmt(CO, 3, 'ALFA');          // CO (por ciudad)\n  rec02 += fmt(tipoDocto, 2, 'ALFA');   // TIPO-DOCTO\n  rec02 += fmt(nroDoctoNum, 6, 'NUM');  // NRO-DOCTO\n  for (let i = 0; i < 8; i++) rec02 += ' '.repeat(60); // detalles vacíos\n  rec02 += ' '.repeat(9);               // FILLER\n  return rec02.slice(0, 512);\n}\n\nfunction buildReg03(inv, nroReg) {\n  const EMPRESA = detectEmpresa(inv);\n  const CIUDAD  = cityFromSelected(inv);\n  const CO      = detectCO(EMPRESA, CIUDAD) || String(inv['CO'] || '001').slice(0,3);\n\n  const tipoDocto = 'PA';\n  const fullDocId = String(inv['Número de Factura'] || '');\n  const nroDoctoNum = (fullDocId.replace(/[A-Za-z]/g, '') || '').padStart(6, '0');\n\n  const svc = detectService(inv);\n  const servicio   = fmt(svc.code, 8, 'ALFA'); // dinámico 001–007 (o UNCLASIFIED)\n  const cantidad   = fmt_q(1);\n  const precioUni  = fmt_m(inv['Valor Línea 1']);\n  const valorBruto = fmt_m(inv['Valor Línea 1']);\n  const tasaDscto1 = '00000';\n  const tasaDscto2 = '00000';\n  const codImpuesto= ' ';\n  const valorIVA   = fmt_m(inv['IVA']);\n\n  const co03       = fmt(CO, 3, 'ALFA');\n  const ccosto     = '1001    ';          // si cambia por servicio/empresa, aquí lo parametrizas\n  const proyecto   = '0000000000';\n  const detMov     = fmt(' ', 40, 'ALFA');\n  const terceroCod = fmt(inv['NIT Emisor'], 13, 'ALFA');\n  const terceroSuc = fmt('00', 2, 'ALFA');\n  const desc1 = fmt(' ', 60, 'ALFA');\n  const desc2 = fmt(' ', 60, 'ALFA');\n  const desc3 = fmt(' ', 60, 'ALFA');\n  const desc4 = fmt(' ', 60, 'ALFA');\n  const descProy   = fmt(' ', 40, 'ALFA');\n  const fecIniProy = fmt(' ', 8, 'NUM');\n  const filler03   = fmt(' ', 39, 'ALFA');\n\n  let rec03 = '';\n  rec03 += nroReg;                         // NRO-REG\n  rec03 += fmt('03', 2, 'NUM');           // TIPO-REG\n  rec03 += fmt(EMPRESA, 2, 'ALFA');       // EMPRESA (sigla)\n  rec03 += fmt(CO, 3, 'ALFA');            // CO (por ciudad)\n  rec03 += fmt(tipoDocto, 2, 'ALFA');     // TIPO-DOCTO\n  rec03 += fmt(nroDoctoNum, 6, 'NUM');    // NRO-DOCTO\n  rec03 += servicio;                      // SERVICIO (dinámico)\n  rec03 += cantidad;                      // CANTIDAD\n  rec03 += precioUni;                     // PRECIO-UNI\n  rec03 += valorBruto;                    // VALOR-BRUTO\n  rec03 += tasaDscto1;                    // TASA-DSCTO-1\n  rec03 += tasaDscto2;                    // TASA-DSCTO-2\n  rec03 += codImpuesto;                   // COD-IMPUESTO\n  rec03 += valorIVA;                      // VALOR-IVA\n  rec03 += co03;                          // CO\n  rec03 += ccosto;                        // CCOSTO\n  rec03 += proyecto;                      // PROYECTO\n  rec03 += detMov;                        // DETALLE MOV\n  rec03 += terceroCod;                    // TERCERO-COD\n  rec03 += terceroSuc;                    // TERCERO-SUC\n  rec03 += desc1; rec03 += desc2; rec03 += desc3; rec03 += desc4;\n  rec03 += descProy;\n  rec03 += fecIniProy;\n  rec03 += filler03;\n  return rec03.slice(0, 512);\n}\n\n// ================= Agregación =================\nconst lines = [];\nfor (let i = 0; i < items.length; i++) {\n  const inv = items[i].json;                // 1 factura\n  const nroReg = String(i + 1).padStart(8, '0'); // 00000001, 00000002, ...\n\n  // Logs útiles en ejecución\n  const emp = detectEmpresa(inv);\n  const city  = cityFromSelected(inv);\n  const co = detectCO(emp, city);\n  if (!emp) console.warn(`Empresa no reconocida para receptor: ${inv['Razón Social Receptor']} (NIT: ${inv['NIT Receptor'] ?? 'N/A'})`);\n  if (!city) console.warn(`Ciudad no detectada en factura ${inv['Número de Factura']}. Verifica el path del XML.`);\n  if (emp && city && !co) console.warn(`Sin CO para combinación: ${emp} + ${city}. Actualiza EMP_CITY_TO_CO si aplica.`);\n  if (detectService(inv).code === 'UNCLASIFIED') console.warn(`Servicio no clasificado: \"${inv['Descripción Línea 1']}\" en factura ${inv['Número de Factura']}`);\n\n  lines.push(buildReg01(inv, nroReg));\n  lines.push(buildReg02(inv, nroReg));\n  lines.push(buildReg03(inv, nroReg));\n}\n\n// CRLF para compatibilidad con SIESA\nconst content = lines.join('\\r\\n') + '\\r\\n';\n\nreturn [{ json: { filename: 'FPBATCH', content } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -96,
+        -64
+      ],
+      "id": "21c9da00-ebf6-4350-9586-d93d3de29cf1",
+      "name": "Code"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Enviar ZIP al Webhook": {
+      "main": [
+        [
+          {
+            "node": "Split Out Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out Items": {
+      "main": [
+        [
+          {
+            "node": "Campos Seleccionados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campos Seleccionados": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Enviar ZIP al Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d46166b9-4f7a-4a62-9ed7-54f2c4e7d13b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "81300b1a35b785e8e0ceccd610323cc5d5dd45c4ac0172d8eed774fc6a97b69e"
+  },
+  "id": "1jZws0YO7fftci0m",
+  "tags": []
+}
